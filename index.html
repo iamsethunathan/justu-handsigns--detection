@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naruto Hand Powers</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;600;700&family=Noto+Sans+JP:wght@300;400&display=swap');
+
+:root {
+  --n1:#FF6A00; --n2:#FFD700; --n3:#FF9A3C;
+  --s1:#00C8FF; --s2:#7B2FBE; --s3:#B06EFF;
+  --dark:#05080E; --panel:rgba(6,10,18,0.88);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;min-height:100vh;background:var(--dark);font-family:'Rajdhani',sans-serif;color:#E6EEFF;overflow-x:hidden;}
+
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 55% 55% at 15% 50%,rgba(255,106,0,.09) 0%,transparent 60%),
+             radial-gradient(ellipse 55% 55% at 85% 50%,rgba(123,47,190,.09) 0%,transparent 60%),
+             radial-gradient(ellipse 70% 35% at 50% 100%,rgba(255,215,0,.04) 0%,transparent 50%);}
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,200,255,.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,106,0,.025) 1px,transparent 1px);
+  background-size:48px 48px;}
+
+.app{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:18px;min-height:100vh;display:flex;flex-direction:column;}
+
+/* header */
+header{text-align:center;padding:16px 0 12px;}
+.hbadge{font-size:9px;letter-spacing:5px;color:rgba(0,200,255,.65);text-transform:uppercase;margin-bottom:8px;}
+h1{font-family:'Cinzel Decorative',cursive;font-size:clamp(24px,4.5vw,54px);font-weight:900;
+  background:linear-gradient(120deg,var(--n1),var(--n2) 40%,var(--s1) 65%,var(--s2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;letter-spacing:1px;}
+.hsub{font-size:10px;letter-spacing:3px;color:rgba(230,238,255,.35);margin-top:6px;text-transform:uppercase;}
+
+/* layout */
+.grid{display:grid;grid-template-columns:1fr 310px;gap:16px;margin-top:14px;flex:1;}
+@media(max-width:840px){.grid{grid-template-columns:1fr;}}
+
+/* camera panel */
+.cam-panel{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);
+  background:var(--panel);backdrop-filter:blur(20px);
+  box-shadow:0 0 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);}
+.cam-head{display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.25);}
+.cam-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(0,200,255,.7);font-weight:700;}
+.ldot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);transition:all .4s;}
+.ldot.on{background:#0FE066;box-shadow:0 0 8px #0FE066;}
+.ldot.blink{animation:blink 1.3s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
+
+/* video stack */
+.vbox{position:relative;background:#000;aspect-ratio:4/3;overflow:hidden;}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+canvas{position:absolute;inset:0;width:100%;height:100%;}
+#c-skel{z-index:2;}
+#c-jutsu{z-index:3;}
+#c-fx{z-index:4;}
+
+/* corner brackets */
+.corner{position:absolute;width:20px;height:20px;border-style:solid;z-index:5;pointer-events:none;transition:border-color .5s,width .3s,height .3s;}
+.corner-tl{top:10px;left:10px;border-width:2px 0 0 2px;}
+.corner-tr{top:10px;right:10px;border-width:2px 2px 0 0;}
+.corner-bl{bottom:10px;left:10px;border-width:0 0 2px 2px;}
+.corner-br{bottom:10px;right:10px;border-width:0 2px 2px 0;}
+.scan{position:absolute;left:0;right:0;height:1px;z-index:5;pointer-events:none;display:none;
+  background:linear-gradient(90deg,transparent,rgba(0,200,255,.7),transparent);
+  animation:scan 2.8s linear infinite;}
+@keyframes scan{0%{top:0%}100%{top:100%}}
+
+/* power label */
+#plabel{position:absolute;bottom:0;left:0;right:0;z-index:6;
+  padding:22px 18px 16px;
+  background:linear-gradient(to top,rgba(5,8,14,.98) 0%,rgba(5,8,14,.75) 55%,transparent);
+  opacity:0;transition:opacity .4s;}
+#pname{font-family:'Cinzel Decorative',cursive;font-size:clamp(16px,2.6vw,28px);font-weight:700;transition:color .5s;}
+#psub{font-family:'Noto Sans JP',sans-serif;font-size:10px;letter-spacing:2px;margin-top:3px;transition:color .5s;}
+.cbar{margin-top:10px;display:flex;align-items:center;gap:10px;}
+.cbar-lbl{font-size:8px;letter-spacing:2px;color:rgba(230,238,255,.35);text-transform:uppercase;}
+.cbar-track{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
+.cbar-fill{height:100%;border-radius:2px;transition:width .45s,background .5s;}
+.cbar-pct{font-size:10px;font-weight:700;min-width:34px;text-align:right;transition:color .5s;}
+
+/* no-cam */
+.nocam{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:12px;background:rgba(5,8,14,.93);}
+.nocam-icon{font-size:50px;opacity:.28;}
+.nocam-txt{font-size:11px;letter-spacing:2px;color:rgba(230,238,255,.35);text-align:center;line-height:1.9;}
+
+/* controls */
+.controls{display:flex;gap:10px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.05);}
+.btn{flex:1;padding:10px 12px;border-radius:9px;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;border:1px solid;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.btn-start{background:rgba(255,106,0,.08);border-color:rgba(255,106,0,.35);color:var(--n1);}
+.btn-start:hover{background:rgba(255,106,0,.2);box-shadow:0 0 16px rgba(255,106,0,.2);}
+.btn-demo{background:rgba(0,200,255,.06);border-color:rgba(0,200,255,.28);color:var(--s1);}
+.btn-demo:hover{background:rgba(0,200,255,.15);box-shadow:0 0 14px rgba(0,200,255,.15);}
+.btn-demo.on{background:rgba(0,200,255,.18);border-color:var(--s1);}
+.btn-sound{background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.28);color:var(--n2);}
+.btn-sound:hover{background:rgba(255,215,0,.15);}
+.btn-sound.muted{opacity:.45;}
+
+/* sidebar */
+.sidebar{display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--panel);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;overflow:hidden;box-shadow:0 0 22px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);}
+.chdr{padding:10px 15px;border-bottom:1px solid rgba(255,255,255,.05);font-size:9px;letter-spacing:3px;text-transform:uppercase;font-weight:700;}
+.cbody{padding:14px;}
+
+/* power cards */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pcard{border-radius:11px;padding:14px 11px 12px;border:1px solid;position:relative;overflow:hidden;transition:all .4s;}
+.pcard.naruto{background:rgba(255,106,0,.07);border-color:rgba(255,106,0,.2);}
+.pcard.naruto.lit{background:rgba(255,106,0,.18);border-color:rgba(255,106,0,.7);box-shadow:0 0 24px rgba(255,106,0,.25),0 0 60px rgba(255,106,0,.08);}
+.pcard.sasuke{background:rgba(123,47,190,.07);border-color:rgba(123,47,190,.2);}
+.pcard.sasuke.lit{background:rgba(123,47,190,.2);border-color:rgba(0,200,255,.6);box-shadow:0 0 24px rgba(0,200,255,.2),0 0 60px rgba(123,47,190,.1);}
+.pc-icon{font-size:30px;margin-bottom:7px;display:block;}
+.pc-name{font-family:'Cinzel Decorative',cursive;font-size:11px;font-weight:700;margin-bottom:1px;}
+.pc-hand{font-size:8px;letter-spacing:2px;text-transform:uppercase;opacity:.4;margin-bottom:7px;}
+.pc-desc{font-size:9px;color:rgba(230,238,255,.35);line-height:1.6;}
+.pc-bar{height:2px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden;margin-top:8px;}
+.pc-bar-fill{height:100%;border-radius:1px;width:0%;transition:width .45s;}
+.pcard.naruto .pc-bar-fill{background:linear-gradient(90deg,var(--n1),var(--n2));}
+.pcard.sasuke .pc-bar-fill{background:linear-gradient(90deg,var(--s2),var(--s1));}
+
+/* stats */
+.srow{display:flex;gap:9px;padding:12px 14px;}
+.stat{flex:1;text-align:center;padding:9px 4px;background:rgba(0,0,0,.3);border-radius:8px;border:1px solid rgba(255,255,255,.05);}
+.sn{font-family:'Cinzel Decorative',cursive;font-size:19px;}
+.sl{font-size:7px;letter-spacing:2px;text-transform:uppercase;opacity:.35;margin-top:2px;}
+
+/* log */
+.log{max-height:106px;overflow-y:auto;}
+.log-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px;}
+.log-item:last-child{border:none;}
+.ldot2{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.lts{color:rgba(230,238,255,.2);min-width:45px;font-size:8px;letter-spacing:1px;}
+
+/* hint */
+.hint{border-radius:10px;padding:11px;margin-top:6px;
+  background:rgba(255,215,0,.04);border:1px dashed rgba(255,215,0,.18);
+  font-size:10px;color:rgba(255,215,0,.6);line-height:1.8;text-align:center;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
+
+/* jutsu fullscreen flash */
+.jflash{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:0;transition:opacity .08s;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid-bg"></div>
+<div class="jflash" id="jflash"></div>
+
+<div class="app">
+  <header>
+    <div class="hbadge">🍃 Chakra Vision System · Real-time</div>
+    <h1>NARUTO HAND POWERS</h1>
+    <div class="hsub">MediaPipe Hand Tracking · Jutsu Animations · Chakra Sound Engine</div>
+  </header>
+
+  <!-- stats bar -->
+  <div class="card" style="margin-top:12px;">
+    <div class="srow">
+      <div class="stat"><div class="sn" id="st" style="color:var(--n2)">0</div><div class="sl">Activations</div></div>
+      <div class="stat"><div class="sn" id="sn" style="color:var(--n1)">0</div><div class="sl">Naruto</div></div>
+      <div class="stat"><div class="sn" id="ss" style="color:var(--s1)">0</div><div class="sl">Sasuke</div></div>
+      <div class="stat"><div class="sn" id="sc" style="color:rgba(230,238,255,.4)">—</div><div class="sl">Confidence</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Camera -->
+    <div>
+      <div class="cam-panel">
+        <div class="cam-head">
+          <span class="cam-title">🎥 Chakra Vision Feed</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="mlbl" style="font-size:8px;letter-spacing:2px;color:rgba(230,238,255,.25);">OFFLINE</span>
+            <div class="ldot blink" id="ldot"></div>
+          </div>
+        </div>
+
+        <div class="vbox" id="vbox">
+          <div class="nocam" id="nocam">
+            <div class="nocam-icon">🎭</div>
+            <div class="nocam-txt">ACTIVATE CHAKRA VISION<br><small style="font-size:9px;opacity:.4;">Click Start Camera or Demo Mode</small></div>
+          </div>
+          <video id="vid" autoplay playsinline muted></video>
+          <canvas id="c-skel"></canvas>
+          <canvas id="c-jutsu"></canvas>
+          <canvas id="c-fx"></canvas>
+
+          <div class="corner corner-tl" id="ctla"></div>
+          <div class="corner corner-tr" id="ctra"></div>
+          <div class="corner corner-bl" id="cbla"></div>
+          <div class="corner corner-br" id="cbra"></div>
+          <div class="scan" id="scanl"></div>
+
+          <div id="plabel">
+            <div id="pname">—</div>
+            <div id="psub"></div>
+            <div class="cbar">
+              <span class="cbar-lbl">Confidence</span>
+              <div class="cbar-track"><div class="cbar-fill" id="cfill" style="width:0%"></div></div>
+              <span class="cbar-pct" id="cpct">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-start" id="btnS" onclick="startCam()">▶ Start Camera</button>
+          <button class="btn btn-demo" id="btnD" onclick="toggleDemo()">⚡ Demo Mode</button>
+          <button class="btn btn-sound" id="btnMute" onclick="toggleMute()">🔊 Sound</button>
+        </div>
+      </div>
+      <div class="hint">
+        ✋ <strong style="color:var(--n2)">Right hand open</strong> → Rasengan &nbsp;|&nbsp;
+        🤚 <strong style="color:var(--s1)">Left hand open</strong> → Chidori<br>
+        <small style="opacity:.55;">Both open = Yin-Yang Release · Click Demo to preview animations</small>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="card">
+        <div class="chdr" style="color:rgba(255,200,80,.65);">⚡ Detected Powers</div>
+        <div class="cbody">
+          <div class="pgrid">
+            <div class="pcard naruto" id="pcN">
+              <span class="pc-icon">🌀</span>
+              <div class="pc-name" style="color:var(--n1)">Rasengan</div>
+              <div class="pc-hand">Right Hand</div>
+              <div class="pc-desc">Wind Release · Spiraling sphere</div>
+              <div class="pc-bar"><div class="pc-bar-fill" id="nb"></div></div>
+            </div>
+            <div class="pcard sasuke" id="pcS">
+              <span class="pc-icon">⚡</span>
+              <div class="pc-name" style="color:var(--s1)">Chidori</div>
+              <div class="pc-hand">Left Hand</div>
+              <div class="pc-desc">Lightning Release · 1000 birds</div>
+              <div class="pc-bar"><div class="pc-bar-fill" id="sb"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chdr" style="color:rgba(0,200,255,.6);">⚙ Settings</div>
+        <div class="cbody" style="padding:10px 14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <span style="font-size:11px;color:rgba(230,238,255,.45);">Sensitivity</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="range" min="1" max="10" value="7" id="sensR" style="width:72px;" oninput="sens=+this.value;document.getElementById('sensL').textContent=this.value;">
+              <span style="font-size:12px;font-weight:700;color:var(--n2);min-width:18px;" id="sensL">7</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <span style="font-size:11px;color:rgba(230,238,255,.45);">Hand skeleton</span>
+            <label style="cursor:pointer;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="skelCb" checked onchange="showSkel=this.checked;document.getElementById('skelL').textContent=this.checked?'ON':'OFF';" style="accent-color:var(--s1);">
+              <span style="font-size:11px;font-weight:700;color:var(--s1);" id="skelL">ON</span>
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+            <span style="font-size:11px;color:rgba(230,238,255,.45);">Jutsu FX</span>
+            <label style="cursor:pointer;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="fxCb" checked onchange="showFX=this.checked;document.getElementById('fxL').textContent=this.checked?'ON':'OFF';" style="accent-color:var(--n1);">
+              <span style="font-size:11px;font-weight:700;color:var(--n1);" id="fxL">ON</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chdr" style="color:rgba(230,238,255,.35);">📜 Chakra Log</div>
+        <div class="cbody" style="padding:9px 13px;">
+          <div class="log" id="logEl"><div style="font-size:9px;color:rgba(230,238,255,.18);text-align:center;padding:12px 0;">No events yet...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   WEB AUDIO ENGINE — synthesized jutsu sounds
+═══════════════════════════════════════════════ */
+let audioCtx = null;
+let muted = false;
+let rasenganNodes = null;
+let chidoriNodes = null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+/* ── RASENGAN SOUND ──────────────────────────────
+   Deep rumbling wind vortex: layered filtered noise
+   + low sub-bass wobble + high spinning whistle    */
+function playRasengan() {
+  if (muted) return;
+  const ac = getAudio();
+  stopRasengan();
+
+  const master = ac.createGain(); master.gain.setValueAtTime(0, ac.currentTime);
+  master.gain.linearRampToValueAtTime(0.55, ac.currentTime + 0.4);
+  master.connect(ac.destination);
+
+  // Layer 1: deep wind rumble (band-passed noise)
+  const buf = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const noise1 = ac.createBufferSource(); noise1.buffer = buf; noise1.loop = true;
+  const bp1 = ac.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = 140; bp1.Q.value = 0.6;
+  const gain1 = ac.createGain(); gain1.gain.value = 0.7;
+  noise1.connect(bp1); bp1.connect(gain1); gain1.connect(master);
+  noise1.start();
+
+  // Layer 2: mid-range howl (another noise band)
+  const noise2 = ac.createBufferSource(); noise2.buffer = buf; noise2.loop = true; noise2.loopStart = 0.3;
+  const bp2 = ac.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 420; bp2.Q.value = 1.2;
+  const gain2 = ac.createGain(); gain2.gain.value = 0.35;
+  // Auto-wobble the frequency for spinning effect
+  const lfo1 = ac.createOscillator(); lfo1.frequency.value = 3.2;
+  const lfoGain1 = ac.createGain(); lfoGain1.gain.value = 200;
+  lfo1.connect(lfoGain1); lfoGain1.connect(bp2.frequency);
+  noise2.connect(bp2); bp2.connect(gain2); gain2.connect(master);
+  noise2.start(); lfo1.start();
+
+  // Layer 3: high spinning whistle
+  const osc1 = ac.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 880;
+  const lfo2 = ac.createOscillator(); lfo2.frequency.value = 7;
+  const lfoG2 = ac.createGain(); lfoG2.gain.value = 340;
+  lfo2.connect(lfoG2); lfoG2.connect(osc1.frequency);
+  const hpf = ac.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 700;
+  const gain3 = ac.createGain(); gain3.gain.value = 0.12;
+  osc1.connect(hpf); hpf.connect(gain3); gain3.connect(master);
+  osc1.start(); lfo2.start();
+
+  // Layer 4: sub-bass thump
+  const sub = ac.createOscillator(); sub.type = 'sine'; sub.frequency.value = 55;
+  const lfo3 = ac.createOscillator(); lfo3.frequency.value = 1.8;
+  const lfoG3 = ac.createGain(); lfoG3.gain.value = 20;
+  lfo3.connect(lfoG3); lfoG3.connect(sub.frequency);
+  const gain4 = ac.createGain(); gain4.gain.value = 0.5;
+  sub.connect(gain4); gain4.connect(master);
+  sub.start(); lfo3.start();
+
+  rasenganNodes = { master, noise1, noise2, osc1, sub, lfo1, lfo2, lfo3 };
+}
+
+function stopRasengan() {
+  if (!rasenganNodes) return;
+  const { master, noise1, noise2, osc1, sub, lfo1, lfo2, lfo3 } = rasenganNodes;
+  const t = audioCtx.currentTime;
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(0, t + 0.35);
+  try { noise1.stop(t+0.4); noise2.stop(t+0.4); osc1.stop(t+0.4); sub.stop(t+0.4); lfo1.stop(t+0.4); lfo2.stop(t+0.4); lfo3.stop(t+0.4); } catch(e){}
+  rasenganNodes = null;
+}
+
+/* ── CHIDORI SOUND ───────────────────────────────
+   Thousands of chirping birds: rapid high-freq
+   crackle bursts + electric buzz + bird harmonics  */
+function playChidori() {
+  if (muted) return;
+  const ac = getAudio();
+  stopChidori();
+
+  const master = ac.createGain(); master.gain.setValueAtTime(0, ac.currentTime);
+  master.gain.linearRampToValueAtTime(0.5, ac.currentTime + 0.3);
+  master.connect(ac.destination);
+
+  // Layer 1: electric crackle (very fast noise bursts)
+  const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  // Sparse crackle: mostly silence, sharp spikes
+  for (let i = 0; i < data.length; i++) {
+    if (Math.random() < 0.04) data[i] = (Math.random() * 2 - 1) * 1.5;
+    else data[i] = data[i-1] ? data[i-1] * 0.85 : 0;
+  }
+  const crackle = ac.createBufferSource(); crackle.buffer = buf; crackle.loop = true;
+  const hp1 = ac.createBiquadFilter(); hp1.type = 'highpass'; hp1.frequency.value = 3500;
+  const g1 = ac.createGain(); g1.gain.value = 0.9;
+  crackle.connect(hp1); hp1.connect(g1); g1.connect(master);
+  crackle.start();
+
+  // Layer 2: rapid pulsed buzz (the "bird chirp" rhythm)
+  const buzz = ac.createOscillator(); buzz.type = 'square'; buzz.frequency.value = 3200;
+  const pulseGain = ac.createGain(); pulseGain.gain.value = 0;
+  // Script processor for rapid gating (chirp rhythm 180 bpm-ish)
+  const lfoChirp = ac.createOscillator(); lfoChirp.frequency.value = 22; // 22 Hz gate = rapid chirp
+  const lfoChirpG = ac.createGain(); lfoChirpG.gain.value = 0.5;
+  const chirpDC = ac.createConstantSource ? ac.createConstantSource() : null;
+  lfoChirp.connect(lfoChirpG); lfoChirpG.connect(pulseGain.gain);
+  const constantGain = ac.createGain(); constantGain.gain.value = 0.5;
+  if (chirpDC) { chirpDC.offset.value = 0.5; chirpDC.connect(pulseGain.gain); chirpDC.start(); }
+  buzz.connect(pulseGain);
+  const hpBuzz = ac.createBiquadFilter(); hpBuzz.type = 'bandpass'; hpBuzz.frequency.value = 3200; hpBuzz.Q.value = 2;
+  const g2 = ac.createGain(); g2.gain.value = 0.18;
+  pulseGain.connect(hpBuzz); hpBuzz.connect(g2); g2.connect(master);
+  buzz.start(); lfoChirp.start();
+
+  // Layer 3: harmonic bird tones (multiple oscillators detuned)
+  const freqs = [2100, 2400, 2750, 3100, 3600];
+  const birdOscs = freqs.map((f, idx) => {
+    const o = ac.createOscillator(); o.type = 'triangle';
+    o.frequency.value = f;
+    const detuneLFO = ac.createOscillator(); detuneLFO.frequency.value = 8 + idx * 3.5;
+    const detG = ac.createGain(); detG.gain.value = 80 + idx * 40;
+    detuneLFO.connect(detG); detG.connect(o.detune);
+    const ampLFO = ac.createOscillator(); ampLFO.frequency.value = 14 + idx * 4;
+    const ampG = ac.createGain(); ampG.gain.value = 0.04;
+    ampLFO.connect(ampG);
+    const g = ac.createGain(); g.gain.value = 0;
+    ampG.connect(g.gain);
+    const dcg = ac.createGain(); dcg.gain.value = 0.04;
+    o.connect(dcg); dcg.connect(g); g.connect(master);
+    o.start(); detuneLFO.start(); ampLFO.start();
+    return { o, detuneLFO, ampLFO };
+  });
+
+  // Layer 4: low electric hum base
+  const hum = ac.createOscillator(); hum.type = 'sawtooth'; hum.frequency.value = 120;
+  const humLPF = ac.createBiquadFilter(); humLPF.type = 'lowpass'; humLPF.frequency.value = 800;
+  const g4 = ac.createGain(); g4.gain.value = 0.15;
+  hum.connect(humLPF); humLPF.connect(g4); g4.connect(master);
+  hum.start();
+
+  chidoriNodes = { master, crackle, buzz, lfoChirp, hum, birdOscs, chirpDC };
+}
+
+function stopChidori() {
+  if (!chidoriNodes) return;
+  const { master, crackle, buzz, lfoChirp, hum, birdOscs, chirpDC } = chidoriNodes;
+  const t = audioCtx.currentTime;
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(0, t + 0.3);
+  try {
+    crackle.stop(t+0.35); buzz.stop(t+0.35); lfoChirp.stop(t+0.35); hum.stop(t+0.35);
+    if (chirpDC) chirpDC.stop(t+0.35);
+    birdOscs.forEach(({o,detuneLFO,ampLFO}) => { o.stop(t+0.35); detuneLFO.stop(t+0.35); ampLFO.stop(t+0.35); });
+  } catch(e){}
+  chidoriNodes = null;
+}
+
+function stopAllSounds() { stopRasengan(); stopChidori(); }
+
+function toggleMute() {
+  muted = !muted;
+  const btn = document.getElementById('btnMute');
+  btn.textContent = muted ? '🔇 Muted' : '🔊 Sound';
+  btn.classList.toggle('muted', muted);
+  if (muted) stopAllSounds();
+}
+
+/* ═══════════════════════════════════════════════
+   CANVAS SETUP
+═══════════════════════════════════════════════ */
+const cSkel  = document.getElementById('c-skel');
+const cJutsu = document.getElementById('c-jutsu');
+const cFX    = document.getElementById('c-fx');
+const skelCtx  = cSkel.getContext('2d');
+const jutsuCtx = cJutsu.getContext('2d');
+const fxCtx    = cFX.getContext('2d');
+
+function resizeAll() {
+  const b = document.getElementById('vbox');
+  const w = b.clientWidth, h = b.clientHeight;
+  [cSkel, cJutsu, cFX].forEach(c => { c.width = w; c.height = h; });
+}
+window.addEventListener('resize', resizeAll);
+resizeAll();
+
+/* ═══════════════════════════════════════════════
+   RASENGAN ANIMATION
+   – spinning blue-white sphere with wind arcs
+═══════════════════════════════════════════════ */
+let rasenganAnim = null;
+let rasenganT = 0;
+
+function startRasenganAnim() {
+  if (rasenganAnim) return;
+  rasenganT = 0;
+  rasenganAnim = setInterval(() => {
+    rasenganT += 0.04;
+    drawRasengan(cJutsu.width, cJutsu.height);
+  }, 16);
+}
+function stopRasenganAnim() {
+  if (rasenganAnim) { clearInterval(rasenganAnim); rasenganAnim = null; }
+  jutsuCtx.clearRect(0, 0, cJutsu.width, cJutsu.height);
+}
+
+function drawRasengan(W, H) {
+  jutsuCtx.clearRect(0, 0, W, H);
+  const cx = W * 0.72, cy = H * 0.45;
+  const R = Math.min(W, H) * 0.16;
+  const t = rasenganT;
+
+  // outer glow rings
+  for (let ring = 4; ring >= 1; ring--) {
+    const rr = R * (1 + ring * 0.28 + Math.sin(t * 2 + ring) * 0.04);
+    const alpha = 0.04 + ring * 0.015;
+    jutsuCtx.beginPath();
+    jutsuCtx.arc(cx, cy, rr, 0, Math.PI * 2);
+    jutsuCtx.strokeStyle = `rgba(120,220,255,${alpha})`;
+    jutsuCtx.lineWidth = 2;
+    jutsuCtx.stroke();
+  }
+
+  // wind arcs spinning around the sphere
+  const arcCount = 7;
+  for (let i = 0; i < arcCount; i++) {
+    const phase = (i / arcCount) * Math.PI * 2 + t * (1.8 + i * 0.07);
+    const arcR  = R * (0.85 + Math.sin(t * 3 + i) * 0.12);
+    const span  = 1.1 + Math.sin(t * 2.5 + i * 0.7) * 0.3;
+    const thick = 1.5 + Math.sin(t * 4 + i) * 0.8;
+    const alpha = 0.55 + Math.sin(t * 3 + i) * 0.25;
+    jutsuCtx.save();
+    jutsuCtx.translate(cx, cy);
+    jutsuCtx.rotate(phase);
+    jutsuCtx.beginPath();
+    jutsuCtx.arc(0, 0, arcR, -span / 2, span / 2);
+    jutsuCtx.strokeStyle = `rgba(160,230,255,${alpha})`;
+    jutsuCtx.lineWidth = thick;
+    jutsuCtx.lineCap = 'round';
+    jutsuCtx.stroke();
+    jutsuCtx.restore();
+  }
+
+  // inner spiral bands
+  const bands = 5;
+  for (let i = 0; i < bands; i++) {
+    const bPhase = (i / bands) * Math.PI * 2 + t * 3.5;
+    for (let j = 0; j < 30; j++) {
+      const frac = j / 30;
+      const angle = bPhase + frac * Math.PI * 1.6;
+      const r = R * frac * 0.92;
+      const px = cx + Math.cos(angle) * r;
+      const py = cy + Math.sin(angle) * r;
+      const a = (1 - frac) * 0.6;
+      jutsuCtx.beginPath();
+      jutsuCtx.arc(px, py, 1.2 * (1 - frac * 0.6), 0, Math.PI * 2);
+      jutsuCtx.fillStyle = `rgba(200,240,255,${a})`;
+      jutsuCtx.fill();
+    }
+  }
+
+  // core: bright white-blue sphere
+  const coreGrad = jutsuCtx.createRadialGradient(cx - R * 0.2, cy - R * 0.2, 0, cx, cy, R * 0.88);
+  coreGrad.addColorStop(0, 'rgba(255,255,255,0.98)');
+  coreGrad.addColorStop(0.25, 'rgba(180,235,255,0.95)');
+  coreGrad.addColorStop(0.65, 'rgba(60,160,240,0.88)');
+  coreGrad.addColorStop(1, 'rgba(10,80,180,0.0)');
+  jutsuCtx.beginPath();
+  jutsuCtx.arc(cx, cy, R * 0.88, 0, Math.PI * 2);
+  jutsuCtx.fillStyle = coreGrad;
+  jutsuCtx.fill();
+
+  // surface ripple lines
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 + t * 4;
+    const x1 = cx + Math.cos(angle) * R * 0.1;
+    const y1 = cy + Math.sin(angle) * R * 0.1;
+    const x2 = cx + Math.cos(angle) * R * 0.78;
+    const y2 = cy + Math.sin(angle) * R * 0.78;
+    const a = 0.18 + Math.sin(t * 6 + i) * 0.1;
+    jutsuCtx.beginPath();
+    jutsuCtx.moveTo(x1, y1);
+    jutsuCtx.lineTo(x2, y2);
+    jutsuCtx.strokeStyle = `rgba(255,255,255,${a})`;
+    jutsuCtx.lineWidth = 0.8;
+    jutsuCtx.stroke();
+  }
+
+  // orange energy aura particles orbiting
+  for (let i = 0; i < 20; i++) {
+    const angle = (i / 20) * Math.PI * 2 + t * 2.2 + Math.sin(t + i) * 0.4;
+    const orbitR = R * (1.15 + Math.sin(t * 3 + i * 0.8) * 0.18);
+    const px = cx + Math.cos(angle) * orbitR;
+    const py = cy + Math.sin(angle) * orbitR;
+    const s = 1.5 + Math.sin(t * 5 + i) * 1;
+    const a = 0.6 + Math.sin(t * 4 + i) * 0.3;
+    jutsuCtx.beginPath();
+    jutsuCtx.arc(px, py, s, 0, Math.PI * 2);
+    jutsuCtx.fillStyle = `rgba(255,200,80,${a})`;
+    jutsuCtx.fill();
+  }
+
+  // label
+  jutsuCtx.save();
+  jutsuCtx.font = "700 14px 'Rajdhani',sans-serif";
+  jutsuCtx.fillStyle = 'rgba(180,230,255,0.9)';
+  jutsuCtx.textAlign = 'center';
+  jutsuCtx.fillText('螺旋丸 · RASENGAN', cx, cy + R * 1.5);
+  jutsuCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════
+   CHIDORI ANIMATION
+   – purple-blue lightning bolt cluster with arc flickers
+═══════════════════════════════════════════════ */
+let chidoriAnim = null;
+let chidoriT = 0;
+
+function startChidoriAnim() {
+  if (chidoriAnim) return;
+  chidoriT = 0;
+  chidoriAnim = setInterval(() => {
+    chidoriT += 0.05;
+    drawChidori(cJutsu.width, cJutsu.height);
+  }, 16);
+}
+function stopChidoriAnim() {
+  if (chidoriAnim) { clearInterval(chidoriAnim); chidoriAnim = null; }
+  jutsuCtx.clearRect(0, 0, cJutsu.width, cJutsu.height);
+}
+
+function drawChidori(W, H) {
+  jutsuCtx.clearRect(0, 0, W, H);
+  const cx = W * 0.72, cy = H * 0.45;
+  const R = Math.min(W, H) * 0.14;
+  const t = chidoriT;
+
+  // outer electromagnetic aura
+  for (let ring = 5; ring >= 1; ring--) {
+    const rr = R * (1 + ring * 0.35 + Math.sin(t * 3 + ring) * 0.06);
+    const a = 0.035 + ring * 0.01;
+    jutsuCtx.beginPath();
+    jutsuCtx.arc(cx, cy, rr, 0, Math.PI * 2);
+    jutsuCtx.strokeStyle = `rgba(100,160,255,${a})`;
+    jutsuCtx.lineWidth = 1.5;
+    jutsuCtx.stroke();
+  }
+
+  // lightning bolt function
+  function lightning(x1, y1, x2, y2, depth, alpha, thick) {
+    if (depth <= 0) {
+      jutsuCtx.beginPath();
+      jutsuCtx.moveTo(x1, y1);
+      jutsuCtx.lineTo(x2, y2);
+      jutsuCtx.strokeStyle = `rgba(200,220,255,${alpha})`;
+      jutsuCtx.lineWidth = thick;
+      jutsuCtx.lineCap = 'round';
+      jutsuCtx.stroke();
+      return;
+    }
+    const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * (R * 0.5 / depth);
+    const my = (y1 + y2) / 2 + (Math.random() - 0.5) * (R * 0.5 / depth);
+    lightning(x1, y1, mx, my, depth - 1, alpha, thick * 0.85);
+    lightning(mx, my, x2, y2, depth - 1, alpha, thick * 0.85);
+    // random branch
+    if (Math.random() < 0.35) {
+      const bx = mx + (Math.random() - 0.5) * R * 0.7;
+      const by = my + (Math.random() - 0.5) * R * 0.7;
+      lightning(mx, my, bx, by, depth - 2, alpha * 0.5, thick * 0.5);
+    }
+  }
+
+  // radiating lightning arms
+  const armCount = 8;
+  for (let i = 0; i < armCount; i++) {
+    const baseAngle = (i / armCount) * Math.PI * 2 + t * 0.8;
+    const armLen = R * (1.1 + Math.random() * 0.9 + Math.sin(t * 4 + i) * 0.3);
+    const ex = cx + Math.cos(baseAngle) * armLen;
+    const ey = cy + Math.sin(baseAngle) * armLen;
+    const a = 0.55 + Math.random() * 0.35;
+    lightning(cx, cy, ex, ey, 3, a, 1.8);
+  }
+
+  // surrounding arc sparks (random repositioned each frame — crackle effect)
+  for (let i = 0; i < 14; i++) {
+    const angle1 = Math.random() * Math.PI * 2;
+    const angle2 = angle1 + (Math.random() - 0.5) * 1.2;
+    const r1 = R * (0.9 + Math.random() * 0.7);
+    const r2 = R * (0.9 + Math.random() * 0.7);
+    const sx = cx + Math.cos(angle1) * r1;
+    const sy = cy + Math.sin(angle1) * r1;
+    const ex = cx + Math.cos(angle2) * r2;
+    const ey = cy + Math.sin(angle2) * r2;
+    lightning(sx, sy, ex, ey, 2, 0.3 + Math.random() * 0.3, 0.9);
+  }
+
+  // core: bright purple-white plasma ball
+  const coreGrad = jutsuCtx.createRadialGradient(cx - R * 0.18, cy - R * 0.18, 0, cx, cy, R * 0.88);
+  coreGrad.addColorStop(0, 'rgba(255,255,255,0.99)');
+  coreGrad.addColorStop(0.2, 'rgba(200,210,255,0.97)');
+  coreGrad.addColorStop(0.5, 'rgba(120,80,255,0.92)');
+  coreGrad.addColorStop(0.85, 'rgba(40,20,140,0.7)');
+  coreGrad.addColorStop(1, 'rgba(10,5,80,0.0)');
+  jutsuCtx.beginPath();
+  jutsuCtx.arc(cx, cy, R * 0.88, 0, Math.PI * 2);
+  jutsuCtx.fillStyle = coreGrad;
+  jutsuCtx.fill();
+
+  // inner crackle web on core surface
+  for (let i = 0; i < 8; i++) {
+    const a1 = Math.random() * Math.PI * 2;
+    const a2 = Math.random() * Math.PI * 2;
+    const px1 = cx + Math.cos(a1) * R * Math.random() * 0.75;
+    const py1 = cy + Math.sin(a1) * R * Math.random() * 0.75;
+    const px2 = cx + Math.cos(a2) * R * Math.random() * 0.75;
+    const py2 = cy + Math.sin(a2) * R * Math.random() * 0.75;
+    jutsuCtx.beginPath();
+    jutsuCtx.moveTo(px1, py1);
+    jutsuCtx.lineTo(px2, py2);
+    jutsuCtx.strokeStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.25})`;
+    jutsuCtx.lineWidth = 0.7;
+    jutsuCtx.stroke();
+  }
+
+  // highlight specular
+  const spec = jutsuCtx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx - R * 0.2, cy - R * 0.2, R * 0.4);
+  spec.addColorStop(0, 'rgba(255,255,255,0.45)');
+  spec.addColorStop(1, 'rgba(255,255,255,0)');
+  jutsuCtx.beginPath();
+  jutsuCtx.arc(cx, cy, R * 0.86, 0, Math.PI * 2);
+  jutsuCtx.fillStyle = spec;
+  jutsuCtx.fill();
+
+  // blue sparks orbiting
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + t * 3.5 + Math.sin(t * 5 + i) * 0.5;
+    const or = R * (1.05 + Math.sin(t * 4 + i * 0.9) * 0.22);
+    const px = cx + Math.cos(a) * or;
+    const py = cy + Math.sin(a) * or;
+    const s  = 1.2 + Math.sin(t * 7 + i) * 0.9;
+    const al = 0.5 + Math.random() * 0.5;
+    jutsuCtx.beginPath();
+    jutsuCtx.arc(px, py, s, 0, Math.PI * 2);
+    jutsuCtx.fillStyle = `rgba(160,200,255,${al})`;
+    jutsuCtx.fill();
+  }
+
+  // label
+  jutsuCtx.save();
+  jutsuCtx.font = "700 14px 'Rajdhani',sans-serif";
+  jutsuCtx.fillStyle = 'rgba(180,190,255,0.9)';
+  jutsuCtx.textAlign = 'center';
+  jutsuCtx.fillText('千鳥 · CHIDORI', cx, cy + R * 1.55);
+  jutsuCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════
+   BOTH / YIN-YANG ANIMATION
+═══════════════════════════════════════════════ */
+let bothAnim = null, bothT = 0;
+
+function startBothAnim() {
+  if (bothAnim) return;
+  bothT = 0;
+  bothAnim = setInterval(() => {
+    bothT += 0.04;
+    drawRasengan(cJutsu.width * 0.55, cJutsu.height);
+    // overlay chidori on left
+    drawChidoriAt(cJutsu.width * 0.28, cJutsu.height * 0.45, cJutsu.width, cJutsu.height);
+  }, 16);
+}
+function stopBothAnim() {
+  if (bothAnim) { clearInterval(bothAnim); bothAnim = null; }
+  jutsuCtx.clearRect(0, 0, cJutsu.width, cJutsu.height);
+}
+
+function drawChidoriAt(cx, cy, W, H) {
+  // minimal chidori at alternate position for "both" mode
+  const R = Math.min(W, H) * 0.11;
+  const t = bothT;
+  const armCount = 6;
+  function lightning(x1, y1, x2, y2, depth, alpha, thick) {
+    if (depth <= 0) {
+      jutsuCtx.beginPath(); jutsuCtx.moveTo(x1, y1); jutsuCtx.lineTo(x2, y2);
+      jutsuCtx.strokeStyle = `rgba(180,200,255,${alpha})`; jutsuCtx.lineWidth = thick;
+      jutsuCtx.lineCap = 'round'; jutsuCtx.stroke(); return;
+    }
+    const mx = (x1+x2)/2 + (Math.random()-.5)*(R*.4/depth);
+    const my = (y1+y2)/2 + (Math.random()-.5)*(R*.4/depth);
+    lightning(x1,y1,mx,my,depth-1,alpha,thick*.85); lightning(mx,my,x2,y2,depth-1,alpha,thick*.85);
+  }
+  for (let i=0;i<armCount;i++) {
+    const ba=(i/armCount)*Math.PI*2+t*.8;
+    const al=R*(1+Math.random()*.8);
+    lightning(cx,cy,cx+Math.cos(ba)*al,cy+Math.sin(ba)*al,2,.5+Math.random()*.3,1.4);
+  }
+  const cg = jutsuCtx.createRadialGradient(cx,cy,0,cx,cy,R*.85);
+  cg.addColorStop(0,'rgba(255,255,255,0.98)');
+  cg.addColorStop(0.3,'rgba(180,160,255,0.95)');
+  cg.addColorStop(0.8,'rgba(80,30,200,0.7)');
+  cg.addColorStop(1,'rgba(20,5,100,0)');
+  jutsuCtx.beginPath(); jutsuCtx.arc(cx,cy,R*.85,0,Math.PI*2); jutsuCtx.fillStyle=cg; jutsuCtx.fill();
+}
+
+/* ═══════════════════════════════════════════════
+   PARTICLE FX SYSTEM
+═══════════════════════════════════════════════ */
+let particles = [];
+let showFX = true;
+
+function spawnParticles(who) {
+  if (!showFX) return;
+  const W = cFX.width, H = cFX.height;
+  const cx = W / 2, cy = H / 2;
+  const colors = who === 'naruto' ? ['#FF6A00','#FFD700','#FF9A3C','#FFF0A0'] :
+                 who === 'sasuke' ? ['#00C8FF','#7B2FBE','#B06EFF','#D0E8FF'] :
+                                    ['#FF6A00','#00C8FF','#FFD700','#B06EFF'];
+  for (let i = 0; i < 35; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 1.8 + Math.random() * 3.5;
+    particles.push({
+      x: cx + (Math.random()-.5)*60, y: cy + (Math.random()-.5)*60,
+      vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      r: 1.5 + Math.random()*3.5, life: 1,
+      decay: .01 + Math.random()*.018,
+      color: colors[Math.floor(Math.random()*colors.length)],
+    });
+  }
+}
+
+function animateParticles() {
+  requestAnimationFrame(animateParticles);
+  fxCtx.clearRect(0, 0, cFX.width, cFX.height);
+  if (!showFX || !particles.length) return;
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.vx *= .97; p.vy *= .97; p.life -= p.decay;
+    fxCtx.globalAlpha = Math.max(0, p.life);
+    fxCtx.fillStyle = p.color;
+    fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2); fxCtx.fill();
+    return p.life > 0;
+  });
+  fxCtx.globalAlpha = 1;
+}
+animateParticles();
+
+/* ═══════════════════════════════════════════════
+   SCREEN FLASH
+═══════════════════════════════════════════════ */
+function flash(color) {
+  const el = document.getElementById('jflash');
+  el.style.background = color;
+  el.style.opacity = '0.22';
+  setTimeout(() => { el.style.transition='opacity .5s'; el.style.opacity='0'; }, 80);
+  setTimeout(() => { el.style.transition=''; }, 600);
+}
+
+/* ═══════════════════════════════════════════════
+   MEDIAPIPE INTEGRATION
+═══════════════════════════════════════════════ */
+let mpHands = null, mpCamera = null, stream = null;
+let showSkel = true, sens = 7;
+let prevDetected = null;
+
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+  [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+  [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]
+];
+
+function initMP() {
+  mpHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  mpHands.setOptions({ maxNumHands:2, modelComplexity:1, minDetectionConfidence:.55, minTrackingConfidence:.45 });
+  mpHands.onResults(onResults);
+}
+
+function onResults(res) {
+  resizeAll();
+  skelCtx.clearRect(0, 0, cSkel.width, cSkel.height);
+  if (!res.multiHandLandmarks || !res.multiHandLandmarks.length) { hidePower(); return; }
+
+  let rightOpen=false, leftOpen=false, rc=0, lc=0;
+  res.multiHandLandmarks.forEach((lms, i) => {
+    const h = res.multiHandedness[i];
+    const isRight = h.label === 'Left'; // mirrored
+    const conf = h.score;
+    const open = fingersOpen(lms);
+    if (open >= sens * 0.075) {
+      if (isRight) { rightOpen=true; rc=conf; }
+      else         { leftOpen=true;  lc=conf; }
+    }
+    if (showSkel) drawSkeleton(lms, isRight ? 'naruto' : 'sasuke', conf);
+  });
+
+  let who = null, conf = 0;
+  if      (rightOpen && leftOpen) { who='both';   conf=(rc+lc)/2; }
+  else if (rightOpen)             { who='naruto'; conf=rc; }
+  else if (leftOpen)              { who='sasuke'; conf=lc; }
+
+  if (who) showPower(who, conf); else hidePower();
+}
+
+function fingersOpen(lms) {
+  const tips=[8,12,16,20], pips=[6,10,14,18];
+  return tips.filter((_,i) => lms[tips[i]].y < lms[pips[i]].y).length;
+}
+
+function drawSkeleton(lms, who, alpha) {
+  const W=cSkel.width, H=cSkel.height;
+  const c1 = who==='naruto' ? '#FF6A00' : '#5500CC';
+  const c2 = who==='naruto' ? '#FFD700' : '#00C8FF';
+  skelCtx.save(); skelCtx.globalAlpha = 0.45 + alpha * 0.45;
+  HAND_CONNECTIONS.forEach(([a,b]) => {
+    const ax=(1-lms[a].x)*W, ay=lms[a].y*H, bx=(1-lms[b].x)*W, by=lms[b].y*H;
+    const g = skelCtx.createLinearGradient(ax,ay,bx,by);
+    g.addColorStop(0,c1); g.addColorStop(1,c2);
+    skelCtx.strokeStyle=g; skelCtx.lineWidth=1.8;
+    skelCtx.beginPath(); skelCtx.moveTo(ax,ay); skelCtx.lineTo(bx,by); skelCtx.stroke();
+  });
+  lms.forEach((lm,i) => {
+    skelCtx.fillStyle = i===0?c2:c1;
+    skelCtx.beginPath(); skelCtx.arc((1-lm.x)*W, lm.y*H, i===0?5:2.5, 0, Math.PI*2); skelCtx.fill();
+  });
+  skelCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════
+   POWER STATE MACHINE
+═══════════════════════════════════════════════ */
+let cTotal=0, cN=0, cS=0;
+const POWERS = {
+  naruto: { name:'Rasengan', sub:'風遁・螺旋丸 · Wind Release', c1:'var(--n1)', c2:'var(--n2)', corner:'rgba(255,106,0,.65)', fill:'linear-gradient(90deg,var(--n1),var(--n2))' },
+  sasuke: { name:'Chidori',  sub:'雷遁・千鳥 · Lightning Release', c1:'var(--s1)', c2:'var(--s3)', corner:'rgba(0,200,255,.65)', fill:'linear-gradient(90deg,var(--s2),var(--s1))' },
+  both:   { name:'Yin-Yang Release', sub:'陰陽遁 · Combined Chakra Power', c1:'var(--n2)', c2:'var(--s1)', corner:'rgba(255,215,0,.75)', fill:'linear-gradient(90deg,var(--n1),var(--s2))' },
+};
+
+function showPower(who, conf) {
+  const p = POWERS[who];
+  const pct = Math.round(conf * 100);
+  const plabel = document.getElementById('plabel');
+
+  document.getElementById('pname').textContent = p.name;
+  document.getElementById('pname').style.color = p.c1;
+  document.getElementById('psub').textContent = p.sub;
+  document.getElementById('psub').style.color = p.c2;
+  document.getElementById('cfill').style.background = p.fill;
+  document.getElementById('cfill').style.width = pct + '%';
+  document.getElementById('cpct').textContent = pct + '%';
+  document.getElementById('cpct').style.color = p.c2;
+  plabel.style.opacity = '1';
+  setCorners(p.corner);
+
+  document.getElementById('pcN').classList.toggle('lit', who==='naruto'||who==='both');
+  document.getElementById('pcS').classList.toggle('lit', who==='sasuke'||who==='both');
+  document.getElementById('nb').style.width = (who==='naruto'||who==='both') ? pct+'%' : '0%';
+  document.getElementById('sb').style.width = (who==='sasuke'||who==='both') ? pct+'%' : '0%';
+  document.getElementById('sc').textContent = pct + '%';
+  document.getElementById('sc').style.color = p.c1;
+
+  if (who !== prevDetected) {
+    prevDetected = who;
+    cTotal++; cN += (who==='naruto'||who==='both')?1:0; cS += (who==='sasuke'||who==='both')?1:0;
+    document.getElementById('st').textContent = cTotal;
+    document.getElementById('sn').textContent = cN;
+    document.getElementById('ss').textContent = cS;
+
+    // stop everything first
+    stopRasenganAnim(); stopChidoriAnim(); stopBothAnim();
+    stopAllSounds();
+
+    // start new
+    if (showFX) {
+      if (who==='naruto') { startRasenganAnim(); playRasengan(); flash('rgba(255,150,50,.4)'); }
+      else if (who==='sasuke') { startChidoriAnim(); playChidori(); flash('rgba(80,100,255,.4)'); }
+      else { startRasenganAnim(); playRasengan(); setTimeout(() => playChidori(), 150); flash('rgba(200,180,255,.4)'); }
+    }
+
+    logEvent(p.name + ' activated (' + pct + '%)', who==='naruto'?'var(--n1)':who==='sasuke'?'var(--s1)':'var(--n2)');
+    spawnParticles(who);
+  }
+}
+
+function hidePower() {
+  if (!prevDetected) return;
+  prevDetected = null;
+  document.getElementById('plabel').style.opacity = '0';
+  document.getElementById('pcN').classList.remove('lit');
+  document.getElementById('pcS').classList.remove('lit');
+  document.getElementById('nb').style.width='0%';
+  document.getElementById('sb').style.width='0%';
+  setCorners('rgba(0,200,255,.38)');
+  stopRasenganAnim(); stopChidoriAnim(); stopBothAnim();
+  stopAllSounds();
+  logEvent('Chakra released', 'rgba(230,238,255,.25)');
+}
+
+function setCorners(c) {
+  ['ctla','ctra','cbla','cbra'].forEach(id => document.getElementById(id).style.borderColor = c);
+}
+
+/* ═══════════════════════════════════════════════
+   CAMERA
+═══════════════════════════════════════════════ */
+async function startCam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{width:640,height:480,facingMode:'user'} });
+    const v = document.getElementById('vid');
+    v.srcObject = stream; await v.play();
+    goLive('LIVE');
+    initMP();
+    mpCamera = new Camera(v, { onFrame: async () => { if(mpHands) await mpHands.send({image:v}); }, width:640, height:480 });
+    mpCamera.start();
+    document.getElementById('btnS').textContent='■ Stop Camera';
+    document.getElementById('btnS').onclick=stopCam;
+    logEvent('Camera activated', '#0FE066');
+  } catch(e) {
+    logEvent('Camera blocked — try Demo Mode', 'var(--n1)');
+    alert('Camera unavailable. Use Demo Mode!');
+  }
+}
+function stopCam() {
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  if(mpCamera){mpCamera.stop();mpCamera=null;}
+  document.getElementById('vid').srcObject=null;
+  goOffline();
+  skelCtx.clearRect(0,0,cSkel.width,cSkel.height);
+  document.getElementById('btnS').textContent='▶ Start Camera';
+  document.getElementById('btnS').onclick=startCam;
+  logEvent('Camera stopped','rgba(230,238,255,.25)');
+}
+function goLive(mode) {
+  document.getElementById('nocam').style.display='none';
+  document.getElementById('scanl').style.display='block';
+  document.getElementById('ldot').classList.remove('blink');
+  document.getElementById('ldot').classList.add('on');
+  document.getElementById('mlbl').textContent=mode;
+}
+function goOffline() {
+  document.getElementById('nocam').style.display='flex';
+  document.getElementById('scanl').style.display='none';
+  document.getElementById('ldot').classList.remove('on');
+  document.getElementById('ldot').classList.add('blink');
+  document.getElementById('mlbl').textContent='OFFLINE';
+  hidePower();
+}
+
+/* ═══════════════════════════════════════════════
+   DEMO MODE
+═══════════════════════════════════════════════ */
+let demoOn=false, demoTimer=null, demoIdx=0;
+const DEMO_SEQ=['naruto','none','sasuke','none','naruto','sasuke','none','both','none'];
+
+function toggleDemo() {
+  demoOn = !demoOn;
+  const btn = document.getElementById('btnD');
+  if (demoOn) {
+    btn.textContent='⏹ Stop Demo'; btn.classList.add('on');
+    goLive('DEMO'); runDemo();
+    logEvent('Demo mode active','var(--n2)');
+  } else {
+    btn.textContent='⚡ Demo Mode'; btn.classList.remove('on');
+    clearTimeout(demoTimer); goOffline();
+  }
+}
+function runDemo() {
+  if (!demoOn) return;
+  const state = DEMO_SEQ[demoIdx++ % DEMO_SEQ.length];
+  if (state==='none') hidePower(); else showPower(state, .72+Math.random()*.24);
+  demoTimer = setTimeout(runDemo, 2200 + Math.random()*900);
+}
+
+/* ═══════════════════════════════════════════════
+   LOG
+═══════════════════════════════════════════════ */
+function logEvent(msg, color) {
+  const t=new Date();
+  const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const el=document.getElementById('logEl');
+  if (el.querySelector('div[style]')) el.innerHTML='';
+  const d=document.createElement('div'); d.className='log-item';
+  d.innerHTML=`<div class="ldot2" style="background:${color}"></div><span class="lts">${ts}</span><span style="color:rgba(230,238,255,.6)">${msg}</span>`;
+  el.prepend(d);
+  while(el.children.length>14) el.removeChild(el.lastChild);
+}
+</script>
+</body>
+</html>
